@@ -1,0 +1,495 @@
+/* =========================
+   RESET
+========================= */
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html, body{
+    height:100%;
+    width:100%;
+    overflow:hidden;
+    position:fixed;
+}
+
+#app{
+    width:100%;
+    height:100vh;
+    position:relative;
+    overflow:hidden;
+}
+
+/* =========================
+   PAGE SYSTEM
+========================= */
+.page{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    overflow-y:auto;
+    overflow-x:hidden;
+    transform:translateX(100%);
+    transition:0.35s ease;
+    display:block;
+    background:#f4f6f9;
+}
+
+.page.active{
+    transform:translateX(0);
+}
+
+/* =========================
+   HEADER
+========================= */
+/*=========header=========*/
+.header{
+    text-align:center;
+    margin-bottom:25px;
+
+    /* background image */
+    background-image: url("../uploads/sem.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+
+    padding:30px 15px;
+    border-radius:15px;
+    color:#fff;
+    position:relative;
+    overflow:hidden;
+}
+
+/* biar teks tetap jelas */
+.header::before{
+    content:"";
+    position:absolute;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.4);
+}
+
+/* teks di atas overlay */
+.header h2,
+.header p{
+    position:relative;
+    z-index:1;
+}
+/* =========================
+   CARD
+========================= */
+.card{
+    width:100%;
+    max-width:900px;
+    margin:0 auto 20px auto;
+    background:#fff;
+    padding:25px;
+    border-radius:20px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.08);
+}
+
+.card h3{
+    text-align:center;
+    margin-bottom:25px;
+    color:#333;
+    font-size:24px;
+}
+
+/* =========================
+   SERVICE FIX (INI KUNCI UTAMA)
+========================= */
+.service{
+    display:flex;
+    align-items:flex-start;
+    gap:20px;
+    padding:15px;
+    margin-bottom:20px;
+    border-radius:15px;
+    background:#fafafa;
+    border:1px solid #eee;
+    transition:0.3s;
+}
+
+.service:hover{
+    transform:translateY(-2px);
+    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* IMPORTANT: jangan zigzag di desktop (biar tidak beda tiap card) */
+.service:nth-child(even){
+    flex-direction:row;
+}
+.service:nth-child(odd){
+    flex-direction:row;
+}
+
+
+/* IMAGE */
+.image-box{
+    width:220px;
+    flex-shrink:0;
+}
+
+.service-img{
+    width:100%;
+    height:140px;
+    object-fit:cover;
+    border-radius:12px;
+}
+
+/* INFO */
+.service-info{
+    flex:1;
+    min-width:0;
+}
+
+.service-info h4{
+    font-size:22px;
+    color:#222;
+    margin-bottom:8px;
+}
+
+.service-info p{
+    font-size:18px;
+    color:#28a745;
+    font-weight:bold;
+}
+
+/* BUTTON */
+.btn{
+    background:#28a745;
+    color:#fff;
+    border:none;
+    padding:10px 18px;
+    border-radius:10px;
+    cursor:pointer;
+    font-size:14px;
+    font-weight:bold;
+    white-space:nowrap;
+}
+
+.btn:hover{
+    background:#218838;
+}
+
+/* =========================
+   PACKET LIST (LAYOUT RAPI DESKTOP + HP AMAN)
+========================= */
+.paket-info{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:15px;
+    padding:10px 0;
+    margin-bottom:8px;
+    border-bottom:1px solid #eee;
+}
+
+.paket-info span{
+    flex:1;
+    font-size:14px;
+}
+
+.paket-info b{
+    min-width:90px;
+    text-align:right;
+}
+
+.paket-info .btn{
+    width:70px;
+    padding:6px 10px;
+}
+
+/* =========================
+   MOBILE
+========================= */
+@media (max-width:768px){
+
+   .service{
+    display:flex;
+    align-items:flex-start;
+    gap:20px;
+    padding:15px;
+    margin-bottom:20px;
+    border-radius:15px;
+    background:#fafafa;
+    border:1px solid #eee;
+    transition:0.3s;
+}
+
+/* HAPUS ZIGZAG TOTAL */
+.service:nth-child(even){
+    flex-direction:row;
+}
+
+    .image-box{
+        width:90px;
+    }
+
+    .service-img{
+        height:70px;
+    }
+
+    .service-info h4{
+        font-size:14px;
+    }
+
+    .service-info p{
+        font-size:12px;
+    }
+
+    .btn{
+        padding:7px 10px;
+        font-size:12px;
+    }
+
+    .paket-info span{
+        font-size:12px;
+    }
+
+    .paket-info b{
+        font-size:12px;
+    }
+}
+
+/* =========================
+   TABLET
+========================= */
+@media (min-width:769px) and (max-width:1024px){
+
+    .image-box{
+        width:180px;
+    }
+
+    .service-img{
+        height:120px;
+    }
+}
+
+/* =========================
+   BOTTOM NAV
+========================= */
+.bottom-nav{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    height:65px;
+    z-index:9999;
+
+    background:#fff;
+    border-top:1px solid #ddd;
+
+    display:flex;
+    justify-content:space-around;
+    align-items:center;
+    box-shadow:0 -2px 10px rgba(0,0,0,0.08);
+}
+.page{
+    padding-bottom:90px;
+}
+
+
+.nav-item{
+    flex:1;
+    text-decoration:none;
+    color:#777;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    font-size:13px;
+}
+
+.nav-item.active{
+    color:#28a745;
+    font-weight:bold;
+}
+
+/* =========================
+   MODAL FIX (ANTI BUG SHOW/HIDE)
+========================= */
+.modal{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.6);
+    display:flex;
+    justify-content:center;
+    align-items:center; 
+
+    z-index:999999;
+
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+
+    transition:0.25s ease;
+}
+.modal.hidden{
+    display:none;
+}
+
+.modal.show{
+    opacity:1;
+    visibility:visible;
+    pointer-events:auto;
+}
+.modal{
+    cursor:pointer;
+}
+
+.modal-content{
+    cursor:default;
+}
+
+.modal-content{
+    background:white;
+    width:90%;
+    max-width:400px;
+    padding:20px;
+    border-radius:16px;
+    text-align:center;
+
+    transform:translateY(30px);
+    transition:0.25s ease;
+}
+
+.modal.show .modal-content{
+    transform:translateY(0);
+}
+
+.btn-close{
+    margin-top:15px;
+    padding:10px 15px;
+    border:none;
+    background:#dc3545;
+    color:white;
+    border-radius:10px;
+    cursor:pointer;
+}
+
+.toast{
+    position:fixed;
+    bottom:90px;
+    left:50%;
+    transform:translateX(-50%);
+    background:#333;
+    color:#fff;
+    padding:12px 18px;
+    border-radius:12px;
+    font-size:14px;
+    z-index:9999999;
+
+    opacity:0;
+    visibility:hidden;
+    transition:0.3s;
+}
+
+.toast.show{
+    opacity:1;
+    visibility:visible;
+    transform:translateX(-50%) translateY(-10px);
+}
+/* ===== ABOUT SECTION ===== */
+.about-card{
+    background: linear-gradient(135deg,#ffffff,#f8f9ff);
+}
+
+.about-title{
+    font-size:26px;
+    text-align:center;
+    margin-bottom:15px;
+    color:#222;
+    font-weight:700;
+}
+
+.about-text{
+    color:#555;
+    line-height:1.8;
+    margin-bottom:12px;
+    text-align:justify;
+    font-size:15px;
+}
+
+.about-text b{
+    color:#28a745;
+}
+
+.about-text.highlight{
+    background:#e9fff1;
+    padding:12px;
+    border-left:4px solid #28a745;
+    border-radius:10px;
+}
+
+/* ===== FEATURES ===== */
+.features{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:12px;
+}
+
+.feature-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:12px;
+    background:#f7f7f7;
+    border-radius:12px;
+    font-size:14px;
+    transition:0.3s;
+}
+
+.feature-item i{
+    color:#28a745;
+    font-size:18px;
+}
+
+.feature-item:hover{
+    transform:translateY(-3px);
+    background:#eafff1;
+}
+
+/* ===== RESPONSIVE ===== */
+
+@media(max-width:768px){
+
+    .service{
+        flex-direction:row !important;
+        align-items:flex-start;
+        gap:10px;
+    }
+
+    .image-box{
+        width:90px;
+        flex-shrink:0;
+    }
+
+    .service-img{
+        height:70px;
+    }
+
+    .service-info h4{
+        font-size:14px;
+    }
+
+    .service-info p{
+        font-size:12px;
+    }
+
+    .btn{
+        padding:6px 10px;
+        font-size:12px;
+        flex-shrink:0;
+    }
+
+    .paket-info span,
+    .paket-info b{
+        font-size:12px;
+    }
+}

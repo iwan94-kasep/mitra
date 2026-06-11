@@ -18,20 +18,21 @@
 
 <body>
 
-<div class="header">
+ <div class="header">
 
   <div class="profile">
-
+   
     <img id="fotoMitra" src="default.png" alt="">
     
     
 
-    <div class="nama-mitra" id="judul">
-      Mitra
+    <div class="nama-mitra">
+  <div id="judul">Mitra</div>
+  <small id="ratingMitra">⭐ 0.0</small>
     </div>
    </div>
   </div>
-  
+
 
 
 <!-- TOP MENU (SUDAH SESUAI CSS KAMU) -->
@@ -39,7 +40,7 @@
 
 <!--<div id="list">Loading...</div>-->
 
-<audio id="notifSound" src="go.mp3" preload="auto"></audio>
+<audio id="notifSound" src="suara/go.mp3" preload="auto"></audio>
 <div id="list"></div>
 
 <div id="emptyText" class="empty-text"></div>
@@ -87,8 +88,21 @@
   if(el) el.classList.add("active");
 }
 </script>
+<script>
+  const mitra = JSON.parse(localStorage.getItem("mitra"));
+  const token = localStorage.getItem("token");
+
+    if (!mitra || !token) {
+    window.location.replace("index.html");
+}
+
+</script>
 
 <script>
+
+/* =========================
+   LOGOUT
+========================= */
 function logout() {
   if (!confirm("Yakin ingin logout?")) return;
 
@@ -97,14 +111,15 @@ function logout() {
 }
 
 </script>
+
 <script>
 history.pushState(null, null, location.href);
 
-window.onpopstate = function () {
-  history.pushState(null, null, location.href);
-  navigator.app.exitApp();
-};
+window.addEventListener('popstate', function () {
+    history.pushState(null, null, location.href);
+});
 </script>
+
 
 <script>
 const API = "https://nodejs-production-fea7.up.railway.app";
@@ -223,8 +238,22 @@ function setProfile() {
     foto.src = mitra.foto;
 
   }
+   // ⭐ ambil rating terbaru
+   fetch(API + "/rating-info/" + mitra.id)
+  .then(r => r.json())
+  .then(data => {
 
-}
+    const el = document.getElementById("ratingMitra");
+
+    if (el && data.success) {
+      el.innerText =
+        "⭐ " + Number(data.rating || 0).toFixed(1) +
+        " (" + data.total + ")";
+    }
+
+  });
+ 
+   } 
 
 /* =========================
    UPLOAD FOTO
@@ -386,13 +415,13 @@ function getButton(status, id, phone, orderGender, mitraGender, lat, lng) {
   if (status === "pending") {
 
     // 🔒 filter gender tetap kamu pakai
-    if (orderGender !== "bebas" && orderGender !== mitraGender) {
+    /*if (orderGender !== "bebas" && orderGender !== mitraGender) {
       return `
         <button disabled style="background:#ccc">
           ❌ Tidak Sesuai Gender
         </button>
       `;
-    }
+    } */
 
     return `
       <button class="btn-ambil" onclick="ambil(${id})">
@@ -415,7 +444,7 @@ function getButton(status, id, phone, orderGender, mitraGender, lat, lng) {
 
        ${(lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng)) ? `
   <button class="btn-map"
-    onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}')>
+    onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}')"
     
   </button>
 ` : ""}
@@ -515,6 +544,7 @@ async function loadAkunView() {
 
   const user = data.mitra;
 
+  // Card Profil + Data Pribadi
   document.getElementById("list").innerHTML = `
     <div class="card" style="text-align:center">
 
@@ -522,6 +552,11 @@ async function loadAkunView() {
         style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid #16a34a;margin-bottom:10px;">
 
       <h3>${user.nama}</h3>
+
+      <div class="akun-rating">
+       ⭐ ${Number(user.rating || 0).toFixed(1)}
+       </div>
+
       <p>ID: ${user.id}</p>
 
     </div>
@@ -533,7 +568,19 @@ async function loadAkunView() {
       <p><b>📧 Email:</b> ${user.email || '-'}</p>
       <p><b>👤 Gender:</b> ${user.gender || '-'}</p>
     </div>
+
+    <div class="card">
+      <h3>⭐ Ulasan Pelanggan</h3>
+
+      <div id="ulasanList">
+        Loading...
+      </div>
+    </div>
   `;
+
+  // Load ulasan
+  loadUlasanMitra(user.id);
+
 }
 
 /*=====load saldo navbar======*/
@@ -912,6 +959,7 @@ function tambahOrderRealtime(order) {
 
   container.insertAdjacentHTML("afterbegin", html);
 }
+
 /*==========cancel order======*/
 async function cancelOrder(id) {
 
@@ -945,18 +993,54 @@ async function cancelOrder(id) {
   }
 
 }
+/*======= tampil rating======*/
+async function loadUlasanMitra(driver_id){
 
-/* =========================
-   LOGOUT
-========================= */
-function logout() {
+  try{
 
-  localStorage.removeItem("mitra");
+    const res = await fetch(
+      API + "/ulasan-mitra/" + driver_id
+    );
 
-  window.location.href =
-    "index.html";
+    const data = await res.json();
+
+    if(!data.success) return;
+
+    let html = "";
+
+   data.ulasan.forEach(item => {
+
+  html += `
+    <div class="ulasan-item">
+
+      <div class="ulasan-rating">
+        ${"⭐".repeat(item.rating)}
+      </div>
+
+      <div class="ulasan-text">
+        ${item.ulasan || "-"}
+      </div>
+
+    </div>
+  `;
+
+});
+
+    if(html === ""){
+      html = "Belum ada ulasan";
+    }
+
+    document.getElementById("ulasanList").innerHTML = html;
+
+  }catch(err){
+
+    console.log(err);
+
+  }
 
 }
+
+
 
 /* =========================
    MAP
@@ -1106,7 +1190,6 @@ document.addEventListener(
 );
 
 </script>
-
 
 </body>
 </html>
