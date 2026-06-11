@@ -40,7 +40,7 @@
 
 <!--<div id="list">Loading...</div>-->
 
-<audio id="notifSound" src="suara/go.mp3" preload="auto"></audio>
+<audio id="notifSound" src="go.mp3" preload="auto"></audio>
 <div id="list"></div>
 
 <div id="emptyText" class="empty-text"></div>
@@ -88,21 +88,8 @@
   if(el) el.classList.add("active");
 }
 </script>
-<script>
-  const mitra = JSON.parse(localStorage.getItem("mitra"));
-  const token = localStorage.getItem("token");
-
-    if (!mitra || !token) {
-    window.location.replace("index.html");
-}
-
-</script>
 
 <script>
-
-/* =========================
-   LOGOUT
-========================= */
 function logout() {
   if (!confirm("Yakin ingin logout?")) return;
 
@@ -111,15 +98,14 @@ function logout() {
 }
 
 </script>
-
 <script>
-history.pushState(null, null, location.href);
+/* history.pushState(null, null, location.href);
 
-window.addEventListener('popstate', function () {
-    history.pushState(null, null, location.href);
-});
+window.onpopstate = function () {
+  history.pushState(null, null, location.href);
+  navigator.app.exitApp();
+}; */
 </script>
-
 
 <script>
 const API = "https://nodejs-production-fea7.up.railway.app";
@@ -1040,7 +1026,17 @@ async function loadUlasanMitra(driver_id){
 
 }
 
+/* =========================
+   LOGOUT
+========================= */
+function logout() {
 
+  localStorage.removeItem("mitra");
+
+  window.location.href =
+    "index.html";
+
+}
 
 /* =========================
    MAP
