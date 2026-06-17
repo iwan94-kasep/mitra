@@ -23,6 +23,8 @@
   <div class="profile">
    
     <img id="fotoMitra" src="default.png" alt="">
+    <input type="file" id="fileFoto" />
+<button onclick="uploadFoto()">Upload Foto</button>
     
     
 
@@ -79,6 +81,29 @@
   <i class="fa-solid fa-right-from-bracket"></i>
 </button>
 
+
+<div id="logoutModal" class="logout-modal">
+  <div class="logout-box">
+    <p>Keluar dari akun?</p>
+
+    <div class="logout-action">
+      <button onclick="closeLogout()" class="btn-cancel">Batal</button>
+      <button onclick="doLogout()" class="btn-logout">Logout</button>
+    </div>
+  </div>
+</div>
+
+<div id="cancelModal" class="logout-modal">
+  <div class="logout-box">
+    <p>Batalin order ini?</p>
+
+    <div class="logout-action">
+      <button onclick="closeCancel()" class="btn-cancel">Tidak</button>
+      <button onclick="doCancel()" class="btn-logout">Ya, Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script>
   function setActive(id){
   document.querySelectorAll(".nav-item")
@@ -87,24 +112,35 @@
   const el = document.getElementById(id);
   if(el) el.classList.add("active");
 }
+/*screen*/
+
+
+ 
+
 </script>
 
 <script>
 function logout() {
-  if (!confirm("Yakin ingin logout?")) return;
+  document.getElementById("logoutModal").style.display = "flex";
+}
 
+function closeLogout() {
+  document.getElementById("logoutModal").style.display = "none";
+}
+
+function doLogout() {
   localStorage.removeItem("mitra");
   window.location.replace("index.html");
 }
 
 </script>
 <script>
-/* history.pushState(null, null, location.href);
+ history.pushState(null, null, location.href);
 
 window.onpopstate = function () {
   history.pushState(null, null, location.href);
   navigator.app.exitApp();
-}; */
+}; 
 </script>
 
 <script>
@@ -140,6 +176,7 @@ const socket = io(API);
 let refreshTimeout = null;
 let driverLat = null;
 let driverLng = null;
+let cancelOrderId = null;
 
 /* =========================
    ONLINE STATUS
@@ -947,20 +984,58 @@ function tambahOrderRealtime(order) {
 }
 
 /*==========cancel order======*/
-async function cancelOrder(id) {
 
-  const yes = confirm("Cancel order ini?");
+// buka modal
+function cancelOrder(id) {
+  cancelOrderId = id;
+  document.getElementById("cancelModal").style.display = "flex";
+}
 
-  if (!yes) return;
+// tutup modal
+function closeCancel() {
+  document.getElementById("cancelModal").style.display = "none";
+  cancelOrderId = null;
+}
+
+// konfirmasi YES (dipanggil dari tombol modal)
+async function confirmCancel() {
+  if (!cancelOrderId) return;
 
   try {
-
     const res = await fetch(API + "/cancel-order", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ id })
+      body: JSON.stringify({ id: cancelOrderId })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      loadData();        // refresh list
+      closeCancel();     // tutup modal
+    } else {
+      alert("Gagal cancel order");
+    }
+
+  } catch (err) {
+    console.log(err);
+    alert("Server error");
+  }
+}
+
+
+async function doCancel() {
+  if (!cancelOrderId) return;
+
+  try {
+    const res = await fetch(API + "/cancel-order", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ id: cancelOrderId })
     });
 
     const data = await res.json();
@@ -972,12 +1047,11 @@ async function cancelOrder(id) {
     }
 
   } catch (err) {
-
     console.log(err);
     alert("Server error");
-
   }
 
+  closeCancel();
 }
 /*======= tampil rating======*/
 async function loadUlasanMitra(driver_id){
@@ -1026,17 +1100,6 @@ async function loadUlasanMitra(driver_id){
 
 }
 
-/* =========================
-   LOGOUT
-========================= */
-function logout() {
-
-  localStorage.removeItem("mitra");
-
-  window.location.href =
-    "index.html";
-
-}
 
 /* =========================
    MAP
