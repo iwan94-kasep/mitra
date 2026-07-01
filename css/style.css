@@ -14,13 +14,19 @@
   --bg:#f6f6f6;
 }
 
+
 body {
-  background: #f5f5f5;
-  color: #333;
-  padding: 15px;
-  padding-bottom: 90px; /* penting untuk bottom nav */
-   padding-top: 80px;   /* kasih ruang header */
+  margin: 0;
+  min-height: 100vh;
+  box-sizing: border-box;
+
+  background: url("../user.jpeg") center center/cover no-repeat fixed;
+
+  overflow-x: hidden;
+
+  padding: 80px 15px 90px;
 }
+/*screen*/
 
 /* =========================
    HEADER (KIRI ATAS PROFILE)
@@ -219,6 +225,53 @@ button:active {
   font-size: 16px;
 }
 
+.logout-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(6px);
+  justify-content: center;
+  align-items: center;
+  z-index: 99999;
+}
+
+.logout-box {
+  width: 260px;
+  background: white;
+  border-radius: 14px;
+  padding: 18px;
+  text-align: center;
+  animation: pop .2s ease;
+}
+
+@keyframes pop {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.logout-action {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.logout-action button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  font-weight: bold;
+}
+
+.btn-cancel {
+  background: #e5e5e5;
+}
+
+.btn-logout {
+  background: #e11d48;
+  color: white;
+}
 
 
 
@@ -440,6 +493,25 @@ button:active {
 .ulasan-text {
   font-size: 14px;
   color: #333;
+}
+
+/*historimitra*/
+.history-wrapper{
+    height:calc(100vh - 180px);
+    display:flex;
+    flex-direction:column;
+}
+
+.history-header{
+    font-size:18px;
+    font-weight:600;
+    padding:10px;
+}
+
+.history-container{
+    flex:1;
+    overflow-y:auto;
+    padding-bottom:20px;
 }
 
 

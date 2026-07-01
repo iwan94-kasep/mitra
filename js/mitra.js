@@ -1,0 +1,1107 @@
+const API = "https://nodejs-production-fea7.up.railway.app";
+
+
+document.addEventListener("click", () => {
+  const audio = document.getElementById("notifSound");
+  if (audio) {
+    audio.play().catch(() => {});
+  }
+}, { once: true });
+
+
+/* =========================
+   SESSION
+========================= */
+const mitra = JSON.parse(
+  localStorage.getItem("mitra")
+);
+
+if (!mitra) {
+  window.location.href = "index.html";
+  throw new Error("no login");
+}
+
+const driver_id = mitra.id;
+
+const token = localStorage.getItem("token");
+if (!token) {
+  window.location.href = "index.html";
+}
+
+/* =========================
+   SOCKET
+========================= */
+const socket = io(API);
+let refreshTimeout = null;
+let driverLat = null;
+let driverLng = null;
+let cancelOrderId = null;
+
+/* =========================
+   ONLINE STATUS
+========================= */
+let online = false;
+
+function renderStatus() {
+
+  const text = document.getElementById("statusText");
+  const btn = document.getElementById("onlineBtn");
+
+  if (online) {
+    text.innerText = "Online";
+    btn.classList.add("online");
+    btn.classList.remove("offline");
+  } else {
+    text.innerText = "Offline";
+    btn.classList.add("offline");
+    btn.classList.remove("online");
+  }
+
+}
+
+/* =========================
+   TOGGLE ONLINE
+========================= */
+async function toggleOnline() {
+
+  online = !online;
+  localStorage.setItem("online_status", online ? "1" : "0");
+
+  renderStatus();
+
+  await fetch(API + "/update-status-mitra", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      driver_id,
+      status: online ? "online" : "offline"
+    })
+  });
+
+  if (online) {
+    socket.emit("join-mitra", driver_id);
+  } else {
+    socket.emit("leave-mitra", driver_id);
+  }
+}
+
+/* =========================
+   PROFILE MITRA
+========================= */
+function setProfile() {
+
+  const mitra = JSON.parse(
+    localStorage.getItem("mitra")
+  );
+
+  if (!mitra) return;
+
+  /* nama */
+  const judul =
+    document.getElementById("judul");
+
+  if (judul) {
+
+    judul.innerText =
+      mitra.nama ||
+      mitra.username ||
+      "Mitra";
+
+  }
+
+  /* foto */
+  const foto =
+    document.getElementById("fotoMitra");
+
+  if (foto) {
+
+    foto.src = mitra.foto;
+
+  }
+   // ⭐ ambil rating terbaru
+   fetch(API + "/rating-info/" + mitra.id)
+  .then(r => r.json())
+  .then(data => {
+
+    const el = document.getElementById("ratingMitra");
+
+    if (el && data.success) {
+      el.innerText =
+        "⭐ " + Number(data.rating || 0).toFixed(1) +
+        " (" + data.total + ")";
+    }
+
+  });
+ 
+   } 
+
+/* =========================
+   UPLOAD FOTO
+========================= */
+async function uploadFoto() {
+
+  const fileInput =
+    document.getElementById("fileFoto");
+
+  if (!fileInput) return;
+
+  const file =
+    fileInput.files[0];
+
+  if (!file) return;
+
+  const formData = new FormData();
+
+  formData.append("foto", file);
+
+  formData.append(
+    "driver_id",
+    driver_id
+  );
+
+  const res = await fetch(
+    API + "/upload-foto-mitra",
+    {
+      method: "POST",
+      body: formData
+    }
+  );
+
+  const data = await res.json();
+
+  if (data.success) {
+
+    alert("Foto berhasil diupdate");
+
+    /* update gambar */
+    document.getElementById(
+      "fotoMitra"
+    ).src =
+      API + "/uploads/" + data.filename;
+
+    /* update localStorage */
+    mitra.foto = data.filename;
+
+    localStorage.setItem(
+      "mitra",
+      JSON.stringify(mitra)
+    );
+
+  } else {
+
+    alert("Upload gagal");
+
+  }
+
+}
+
+/* =========================
+   SOUND
+========================= */
+function playSound() {
+
+  const audio = document.getElementById("notifSound");
+
+  if (!audio) return;
+
+  audio.currentTime = 0;
+
+  audio.play()
+    .then(() => console.log("sound ok"))
+    .catch(() => {
+      console.log("autoplay blocked");
+    });
+}
+
+/* =========================
+   VIBRATE
+========================= */
+function vibratePhone() {
+
+  if (navigator.vibrate) {
+
+    navigator.vibrate([
+      200,
+      100,
+      200
+    ]);
+
+  }
+
+}
+
+/* =========================
+   SOCKET EVENT
+========================= */
+socket.on("connect", () => {
+  console.log("socket connected");
+});
+
+socket.on("new-order", (order) => {
+
+  if (!online) return;
+
+  requestAnimationFrame(() => {
+    playSound();
+    vibratePhone();
+    tambahOrderRealtime(order);
+    loadData();
+  });
+
+});
+
+socket.on("order-updated", (order) => {
+
+  console.log("UPDATE DITERIMA:", order);
+
+  loadData();
+ 
+  loadSaldo();
+});
+
+/*=======whatshap=======*/
+function formatWA(phone) {
+  if (!phone) return "";
+
+  phone = phone.replace(/[^0-9]/g, "");
+
+  if (phone.startsWith("0")) {
+    phone = "62" + phone.slice(1);
+  }
+
+  return phone;
+}
+/* =========================
+   BUTTON SYSTEM
+========================= */
+function getButton(status, id, phone, orderGender, mitraGender, lat, lng) {
+
+  if (!online) {
+    return `
+      <button disabled>
+        OFFLINE
+      </button>
+    `;
+  }
+
+  let wa = "";
+  if (phone) {
+    wa = phone.replace(/[^0-9]/g, "");
+    if (wa.startsWith("0")) {
+      wa = "62" + wa.slice(1);
+    }
+  }
+
+  if (status === "pending") {
+
+    // 🔒 filter gender tetap kamu pakai
+    /*if (orderGender !== "bebas" && orderGender !== mitraGender) {
+      return `
+        <button disabled style="background:#ccc">
+          ❌ Tidak Sesuai Gender
+        </button>
+      `;
+    } */
+
+    return `
+      <button class="btn-ambil" onclick="ambil(${id})">
+         Ambil
+      </button>
+    `;
+  }
+
+  if (status === "diambil") {
+    return `
+      <button class="btn-wa"
+        onclick="window.open('https://wa.me/${wa}','_blank')">
+        💬 WhatsApp
+      </button>
+
+      <button class="btn-proses"
+        onclick="ubahStatus(${id}, 'menuju_lokasi')">
+        Berangkat
+      </button>
+
+       ${(lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng)) ? `
+  <button class="btn-map"
+    onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}')"
+    
+  </button>
+` : ""}
+
+      <button class="btn-cancel"
+        onclick="cancelOrder(${id})">
+        Cancel
+      </button>
+    `;
+  }
+
+  if (status === "menuju_lokasi") {
+    return `
+      <button class="btn-proses"
+        onclick="ubahStatus(${id}, 'dikerjakan')">
+        💆 Mulai Pijat
+      </button>
+
+      <button class="btn-cancel"
+        onclick="cancelOrder(${id})">
+        Cancel
+      </button>
+    `;
+  }
+
+  if (status === "dikerjakan") {
+    return `
+      <button class="btn-selesai"
+        onclick="ubahStatus(${id}, 'selesai')">
+        ✅ Selesai
+      </button>
+    `;
+  }
+
+  return "";
+}
+
+/* =========================
+   MODE
+========================= */
+let mode = "active";
+
+function showActive(){
+  mode = "active";
+  setActive("btnActive");
+  loadData();
+}
+
+function showHistory(){
+  mode = "history";
+  setActive("btnHistory");
+  loadData();
+}
+function showSaldo() {
+  mode = "saldo";
+  setActive("btnSaldo");
+  loadData();
+}
+function showAkun() {
+  mode = "akun";
+ setActive("btnAkun");
+  loadData();
+}
+
+/* =========================
+   LOAD DATA
+========================= */
+function loadData() {
+
+  if (mode === "active") {
+    loadActive();
+  }
+
+  if (mode === "history") {
+    loadHistory();
+  }
+
+  if (mode === "saldo") {
+    loadSaldoView();
+  }
+  if (mode === "akun") {
+    loadAkunView();
+  }
+}
+
+/*======navbar akun========*/
+
+async function loadAkunView() {
+
+  const m = JSON.parse(localStorage.getItem("mitra"));
+  if (!m) return;
+
+  const res = await fetch(API + "/mitra/" + m.id);
+  const data = await res.json();
+
+  if (!data.success) return;
+
+  const user = data.mitra;
+
+  // Card Profil + Data Pribadi
+  document.getElementById("list").innerHTML = `
+    <div class="card" style="text-align:center">
+
+      <img src="${user.foto}"
+        style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid #16a34a;margin-bottom:10px;">
+
+      <h3>${user.nama}</h3>
+
+      <div class="akun-rating">
+       ⭐ ${Number(user.rating || 0).toFixed(1)}
+       </div>
+
+      <p>ID: ${user.id}</p>
+
+    </div>
+
+    <div class="card">
+      <h3>📇 Data Pribadi</h3>
+
+      <p><b>📱 No HP:</b> ${user.telepon || '-'}</p>
+      <p><b>📧 Email:</b> ${user.email || '-'}</p>
+      <p><b>👤 Gender:</b> ${user.gender || '-'}</p>
+    </div>
+
+    <div class="card">
+      <h3>⭐ Ulasan Pelanggan</h3>
+
+      <div id="ulasanList">
+        Loading...
+      </div>
+    </div>
+  `;
+
+  // Load ulasan
+  loadUlasanMitra(user.id);
+
+}
+
+/*=====load saldo navbar======*/
+
+async function loadSaldoView() {
+
+  const res = await fetch(API + "/saldo-mitra/" + mitra.id);
+  const data = await res.json();
+
+  if (!data.success) return;
+
+  document.getElementById("list").innerHTML = `
+    <div class="card">
+      <h3>💰 Saldo Saya</h3>
+      <h2 style="color:#16a34a">
+        Rp ${Number(data.mitra.saldo).toLocaleString()}
+      </h2>
+    </div>
+
+    <div class="card">
+      <h3>📜 Riwayat Saldo</h3>
+      <div id="historySaldo">
+        ${data.history.map(item => `
+          <div class="history-item">
+            <b>${item.keterangan}</b><br>
+            <small>${item.created_at}</small><br>
+            <span style="color:${item.type === 'debit' ? 'red' : 'green'}">
+              Rp ${Number(item.nominal).toLocaleString()}
+            </span>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function hitungJarak(lat1, lon1, lat2, lon2) {
+
+  const R = 6371; // km
+
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+
+  const a =
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) *
+    Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+  return R * c;
+}
+
+
+function formatJarak(km) {
+  return km < 1
+    ? `${(km * 1000).toFixed(0)} m`
+    : `${km.toFixed(1)} km`;
+}
+
+/* =========================
+   ACTIVE ORDER
+========================= */
+async function loadActive() {
+
+  try {
+
+    const res = await fetch(API + "/pesanan/" + driver_id);
+    const data = await res.json();
+
+    console.log("ORDER:", data);
+
+    let html = "";
+
+    if (!data || data.length === 0) {
+      document.getElementById("list").innerHTML = "";
+      document.getElementById("emptyText").innerText = "Tidak ada order";
+      return;
+    }
+
+    data.forEach(p => {
+let jarakText = "";
+
+if (
+  driverLat !== null &&
+  driverLng !== null &&
+  p.latitude &&
+  p.longitude
+) {
+  const km = hitungJarak(
+    driverLat,
+    driverLng,
+    parseFloat(p.latitude),
+    parseFloat(p.longitude)
+  );
+
+  jarakText = `<div class="jarak">📍 ${formatJarak(km)} dari kamu</div>`;
+}
+
+
+
+
+  if (
+    p.status === "selesai" ||
+    p.status === "canceled"
+  ) return;
+
+  const lat = parseFloat(p.latitude);
+  const lng = parseFloat(p.longitude);
+
+  const hasMap =
+    !isNaN(lat) &&
+    !isNaN(lng);
+
+  html += `
+  <div class="card" id="order-${p.id}">
+
+    <div class="harga">
+      Rp ${p.harga}
+    </div>
+
+    <div class="user">
+      👤 ${p.username}
+    </div>
+
+    <div class="layanan">
+      💆 ${p.layanan}
+    </div>
+
+    ${p.gender ? `
+      <div class="gender">
+        👥 Terapis: ${p.gender}
+      </div>
+    ` : ""}
+
+    ${p.catatan ? `
+      <div class="catatan">
+        📝 ${p.catatan}
+      </div>
+    ` : ""}
+
+    <div class="status">
+      📌 Status: ${p.status}
+    </div>
+
+    ${hasMap ? `
+      <a
+        href="https://www.google.com/maps?q=${lat},${lng}"
+        target="_blank"
+        class="btnMap">
+        📍 Buka Maps
+      </a>
+    ` : ""}
+
+    <div class="action">
+      ${getButton(p.status, p.id, p.phone, p.gender, mitra.gender, p.latitude, p.longitude)}
+    </div>
+
+  </div>
+`;
+    
+}); 
+
+    document.getElementById("list").innerHTML = html;
+    document.getElementById("emptyText").innerText = "";
+
+  } catch (err) {
+
+    console.log("LOAD ERROR:", err);
+    document.getElementById("list").innerHTML = "";
+    document.getElementById("emptyText").innerText = "Gagal load data";
+
+  }
+}
+
+
+ 
+function updateCard(order) {
+
+  const el = document.getElementById(`order-${order.id}`);
+  if (!el) return;
+
+  el.innerHTML = `
+    <div class="harga">Rp ${order.harga}</div>
+
+    <div>${order.username}</div>
+    <div>${order.layanan}</div>
+
+    <div class="status">
+      ${order.status}
+    </div>
+
+    ${getButton(order.status, order.id)}
+  `;
+}
+
+
+
+/* =========================
+   HISTORY
+========================= */
+async function loadHistory() {
+
+  const res = await fetch(
+    API + "/history/" + driver_id
+  );
+
+  const data = await res.json();
+
+  let html = "";
+
+  data.forEach(p => {
+
+    html += `
+      <div class="card">
+
+        <b>${p.username}</b>
+
+        <div class="layanan">
+          ${p.layanan}
+        </div>
+
+        <div class="harga">
+          Rp ${p.harga}
+        </div>
+
+        <div class="status ${p.status}">
+          ${p.status}
+        </div>
+
+      </div>
+    `;
+
+  });
+
+  document.getElementById("list").innerHTML = `
+    <div class="history-wrapper">
+
+      <div class="history-header">
+        Riwayat Order
+      </div>
+
+      <div class="history-container">
+        ${html}
+      </div>
+
+    </div>
+  `;
+
+  document.getElementById("emptyText").innerText =
+    html ? "" : "Tidak ada histori";
+
+}
+/* =========================
+   ACTION
+========================= */
+async function ambil(id) {
+
+  if (!online) {
+    return alert("OFFLINE");
+  }
+
+  try {
+
+    const res = await fetch(
+      API + "/ambil-order",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":"application/json"
+        },
+
+        body: JSON.stringify({
+          order_id: id,
+          driver_id: driver_id
+        })
+      }
+    );
+
+    const data = await res.json();
+
+    if (data.success) {
+
+      loadData();
+
+    } else {
+
+      Swal.fire({
+    toast: true,
+    position: 'top',
+    icon: 'error',
+    title: 'Gagal ambil order',
+    showConfirmButton: false,
+    timer: 2500
+  });
+
+    }
+
+  } catch (err) {
+
+    console.log(err);
+
+  
+
+  }
+
+}
+
+/* =========================
+   GET PESANAN MITRA
+========================= */
+
+
+
+
+
+
+async function ubahStatus(id, status) {
+
+  try {
+
+    const res = await fetch(API + "/update-status", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        id,
+        status
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+  loadData();
+}
+
+  } catch (err) {
+    console.log(err);
+  }
+
+}
+
+function tambahOrderRealtime(order) {
+
+  const container = document.getElementById("list");
+
+  const lat = parseFloat(order.latitude);
+  const lng = parseFloat(order.longitude);
+
+  const hasMap = !isNaN(lat) && !isNaN(lng);
+
+  const html = `
+    <div class="card" id="order-${order.id}">
+
+      <div class="harga">Rp ${order.harga}</div>
+
+      <div class="user">
+        👤 ${order.username}
+      </div>
+
+      <div class="layanan">
+        ${order.layanan}
+      </div>
+
+      <div class="status pending">
+        pending
+      </div>
+
+      ${hasMap ? `
+        <a
+          href="https://www.google.com/maps?q=${lat},${lng}"
+          target="_blank"
+          class="btnMap"
+        >
+          📍 Buka Maps
+        </a>
+      ` : ""}
+
+      <div class="action">
+        <button class="btn-ambil" onclick="ambil(${order.id})">
+          🚀 Ambil
+        </button>
+      </div>
+
+    </div>
+  `;
+
+  container.insertAdjacentHTML("afterbegin", html);
+}
+
+/*==========cancel order======*/
+
+// buka modal
+function cancelOrder(id) {
+  cancelOrderId = id;
+  document.getElementById("cancelModal").style.display = "flex";
+}
+
+// tutup modal
+function closeCancel() {
+  document.getElementById("cancelModal").style.display = "none";
+  cancelOrderId = null;
+}
+
+// konfirmasi YES (dipanggil dari tombol modal)
+async function confirmCancel() {
+  if (!cancelOrderId) return;
+
+  try {
+    const res = await fetch(API + "/cancel-order", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ id: cancelOrderId })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      loadData();        // refresh list
+      closeCancel();     // tutup modal
+    } else {
+      alert("Gagal cancel order");
+    }
+
+  } catch (err) {
+    console.log(err);
+    alert("Server error");
+  }
+}
+
+
+async function doCancel() {
+  if (!cancelOrderId) return;
+
+  try {
+    const res = await fetch(API + "/cancel-order", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ id: cancelOrderId })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      loadData();
+    } else {
+      alert("Gagal cancel order");
+    }
+
+  } catch (err) {
+    console.log(err);
+    alert("Server error");
+  }
+
+  closeCancel();
+}
+/*======= tampil rating======*/
+async function loadUlasanMitra(driver_id){
+
+  try{
+
+    const res = await fetch(
+      API + "/ulasan-mitra/" + driver_id
+    );
+
+    const data = await res.json();
+
+    if(!data.success) return;
+
+    let html = "";
+
+   data.ulasan.forEach(item => {
+
+  html += `
+    <div class="ulasan-item">
+
+      <div class="ulasan-rating">
+        ${"⭐".repeat(item.rating)}
+      </div>
+
+      <div class="ulasan-text">
+        ${item.ulasan || "-"}
+      </div>
+
+    </div>
+  `;
+
+});
+
+    if(html === ""){
+      html = "Belum ada ulasan";
+    }
+
+    document.getElementById("ulasanList").innerHTML = html;
+
+  }catch(err){
+
+    console.log(err);
+
+  }
+
+}
+
+
+
+
+/* =========================
+   GPS REALTIME
+========================= */
+function startGPS() {
+  navigator.geolocation.watchPosition(
+    function(pos){
+      driverLat = pos.coords.latitude;
+      driverLng = pos.coords.longitude;
+    },
+    function(err){
+      console.log(err);
+    },
+    {
+      enableHighAccuracy:true,
+      maximumAge:0,
+      timeout:5000
+    }
+  );
+}
+
+/* =========================
+   TERIMA LOKASI
+========================= */
+socket.on(
+  "mitra-location",
+  (data) => {
+
+    if (
+      data.driver_id != driver_id
+    ) return;
+
+    const posisi = [
+      data.lat,
+      data.lng
+    ];
+
+    if (marker) {
+      marker.setLatLng(posisi);
+    }
+
+    if (map) {
+      map.setView(posisi, 15);
+    }
+
+  }
+);
+
+/*========saldo mitra==========*/
+
+
+// jalan setelah halaman siap
+document.addEventListener("DOMContentLoaded", () => {
+const saved = localStorage.getItem("online_status");
+
+  online = saved === "1";
+
+  renderStatus();
+
+  if (online) {
+    socket.emit("join-mitra", driver_id);
+  }
+ loadSaldo();
+});
+
+
+ async function loadSaldo() {
+  try {
+    if (!mitra?.id) return;
+
+    const res = await fetch(API + "/saldo-mitra/" + mitra.id);
+    const data = await res.json();
+
+    if (!data.success) return;
+
+    document.getElementById("saldoInfo").innerHTML =
+      `<h2>Rp ${Number(data.mitra.saldo).toLocaleString()}</h2>`;
+
+    let html = "";
+
+    (data.history || []).forEach(item => {
+      let color = item.type === "debit" ? "red" : "green";
+
+      html += `
+<div class="history-item">
+
+          <b>${item.keterangan}</b><br>
+          <small>${item.created_at}</small><br>
+          <span class="${
+  item.type === "debit"
+    ? "history-debit"
+    : "history-credit"
+}">
+            Rp ${Number(item.nominal).toLocaleString()}
+          </span>
+        </div>
+      `;
+    });
+
+    document.getElementById("historySaldo").innerHTML = html;
+
+  } catch (err) {
+    console.log("SALDO ERROR:", err);
+  }
+}
+
+
+/* =========================
+   INIT
+========================= */
+document.addEventListener(
+  "DOMContentLoaded",
+  () => {
+
+    setProfile();
+
+    renderStatus();
+
+    loadData();
+
+
+
+  }
+);
+setInterval(() => {
+  if (online) {
+    loadData();
+  }
+}, 5000);

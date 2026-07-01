@@ -87,21 +87,52 @@ button{
   font-weight:bold;
 
   cursor:pointer;
+
+
+ 
 }
 
 button:active{
   transform:scale(0.98);
 }
+.logo{
+  display:flex;
+  justify-content:center;
+  margin-bottom:15px;
+}
+
+.logo img{
+  width:100px;
+  height:100px;
+  object-fit:contain;
+  border-radius:50%;
+}
+button{
+  width:100%;
+  border:none;
+  padding:14px;
+  background:#038d21;
+  color:white;
+  border-radius:12px;
+  font-size:16px;
+  font-weight:bold;
+  cursor:pointer;
+}
 
 </style>
 </head>
+<link rel="stylesheet" href="css/index.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> 
 
 <body>
 
 <div class="login-box">
 
-  <h2>Login Mitra</h2>
+  <div class="logo">
+    <img src="img/icon.png" alt="Logo">
+  </div>
 
+  <h2>Login Mitra</h2>
   <input id="username" placeholder="Username">
 
   <input id="password" type="password" placeholder="Password">
@@ -111,14 +142,20 @@ button:active{
 </button>
 
 </div>
+<!--pop up-->
+<div id="popup" class="popup">
+  <div class="popup-content">
+    <p id="popup-text"></p>
+    <button onclick="closePopup()">OK</button>
+  </div>
+</div>
 <script>
 
 const API = "https://nodejs-production-fea7.up.railway.app";
 
 
 async function login() {
-
-  const username = document.getElementById("username").value;
+ const username = document.getElementById("username").value;
   const password = document.getElementById("password").value;
 
   const device_id = getDeviceId();
@@ -143,21 +180,28 @@ async function login() {
 
     if (data.success) {
 
+
       localStorage.setItem("mitra", JSON.stringify(data.mitra));
       localStorage.setItem("token", data.token);
 
-      alert("Login berhasil");
+      localStorage.setItem("mitra", JSON.stringify(data.mitra));
+       
 
-      window.location.replace("RJP.html");
+      showPopup("Login berhasil");
+
+      setTimeout(() => {
+    window.location.href = "splash.html";
+}, 2000);
 
     } else {
-      alert(data.message);
+      showPopup(data.message);
     }
 
   } catch (err) {
-    alert("Server tidak terhubung");
+    showPopup("Server tidak terhubung");
     console.log(err);
-  }
+
+   }
 }
 /*satu device */
 function getDeviceId() {
@@ -169,6 +213,18 @@ function getDeviceId() {
   }
 
   return deviceId;
+}
+
+/*=========
+pop up
+============*/
+function showPopup(message) {
+  document.getElementById("popup-text").innerText = message;
+  document.getElementById("popup").style.display = "flex";
+}
+
+function closePopup() {
+  document.getElementById("popup").style.display = "none";
 }
 </script>
 
