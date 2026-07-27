@@ -1,4 +1,4 @@
-const API = "https://nodejs-production-fea7.up.railway.app";
+const API = "https://api.protemass1.top";
 
 
 document.addEventListener("click", () => {

@@ -21,6 +21,8 @@
  <div class="header">
 
   <div class="profile">
+    <input type="file" id="fileFoto" />
+    <button onclick="uploadFoto()">Upload Foto</button>
    
     <img id="fotoMitra" src="default.png" alt="">
     
@@ -227,7 +229,7 @@ document.addEventListener('deviceready', function () {
 
     console.log("TOKEN MITRA:", token);
 
-    fetch("https://nodejs-production-fea7.up.railway.app/api/save-token", {
+    fetch("https://api.protemass1.top/api/save-token", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
